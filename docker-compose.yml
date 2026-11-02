@@ -1,0 +1,11 @@
+# Optional local MongoDB for FINDtech (docker compose up -d)
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - findtech_mongo_data:/data/db
+
+volumes:
+  findtech_mongo_data:
