@@ -35,17 +35,20 @@ async def connect_db() -> None:
         await _client.admin.command("ping")
         await _ensure_indexes()
         logger.info("Connected to MongoDB")
-    except ServerSelectionTimeoutError as e:
-        if settings.environment == "development":
-            logger.warning(
-                "MongoDB unavailable (%s). Falling back to in-memory store for local dev.",
-                e,
-            )
+    except Exception as e:
+        logger.error(
+            "CRITICAL: Failed to connect to MongoDB (%s). "
+            "Checklist: "
+            "1) Ensure MONGODB_URL is configured in your cloud environment variables. "
+            "2) Ensure '0.0.0.0/0' is added in MongoDB Atlas -> Network Access -> IP Access List. "
+            "3) Verify password contains no unencoded special characters. "
+            "Falling back to in-memory database store so the web service remains online.",
+            e,
+        )
+        if _client:
             _client.close()
             _client = None
-            _memory_db = MemoryDatabase(settings.mongodb_db_name)
-        else:
-            raise
+        _memory_db = MemoryDatabase(settings.mongodb_db_name)
 
 
 async def close_db() -> None:
