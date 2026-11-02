@@ -6,6 +6,10 @@
   "installCommand": "npm install",
   "rewrites": [
     {
+      "source": "/api/:match*",
+      "destination": "https://findtech-api.onrender.com/api/:match*"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }
