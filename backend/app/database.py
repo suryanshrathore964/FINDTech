@@ -22,31 +22,41 @@ async def connect_db() -> None:
     global _client, _memory_db
     settings = get_settings()
 
-    if settings.use_memory_db:
+    # If explicitly requested or using an example placeholder URL
+    placeholder_hosts = ("cluster0.xxx.mongodb.net", "cluster0.xxxxx.mongodb.net", "example.com")
+    if settings.use_memory_db or any(p in settings.mongodb_url for p in placeholder_hosts):
         _memory_db = MemoryDatabase(settings.mongodb_db_name)
-        logger.info("Using in-memory database (USE_MEMORY_DB=true)")
+        logger.warning(
+            "MONGODB_URL is unset or contains a placeholder domain (%s). "
+            "Running with in-memory database store with complete laptop catalog and demo user.",
+            settings.mongodb_url,
+        )
         return
 
-    _client = AsyncIOMotorClient(
-        settings.mongodb_url,
-        serverSelectionTimeoutMS=5000,
-    )
     try:
+        _client = AsyncIOMotorClient(
+            settings.mongodb_url,
+            serverSelectionTimeoutMS=5000,
+        )
         await _client.admin.command("ping")
         await _ensure_indexes()
-        logger.info("Connected to MongoDB")
+        logger.info("Connected to MongoDB successfully")
     except Exception as e:
         logger.error(
-            "CRITICAL: Failed to connect to MongoDB (%s). "
+            "CRITICAL: Failed to connect to MongoDB at '%s' (%s). "
             "Checklist: "
-            "1) Ensure MONGODB_URL is configured in your cloud environment variables. "
+            "1) Ensure MONGODB_URL has your real MongoDB Atlas cluster address, not placeholder 'xxx'. "
             "2) Ensure '0.0.0.0/0' is added in MongoDB Atlas -> Network Access -> IP Access List. "
-            "3) Verify password contains no unencoded special characters. "
+            "3) Verify username and password (special characters like @ or # must be URL-encoded). "
             "Falling back to in-memory database store so the web service remains online.",
+            settings.mongodb_url,
             e,
         )
         if _client:
-            _client.close()
+            try:
+                _client.close()
+            except Exception:
+                pass
             _client = None
         _memory_db = MemoryDatabase(settings.mongodb_db_name)
 
